@@ -1,0 +1,150 @@
+<!--
+//todo
+//List all comics in dropdown as archive.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>TEST</title>
+</head>
+<body>
+
+<style>
+	#comic {
+		width: 500px;
+	}
+</style>
+
+<script type="importmap">
+  {
+    "imports": {
+      "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+    }
+  }
+</script>
+
+<div id="app">
+	<div id="controls">
+		<button v-show="hasPrevious" v-on:click="this.prevComic()">Previous</button>
+		<button v-show="hasNext" v-on:click="this.nextComic()">Next</button>
+	</div>
+	
+	<img id="comic" v-bind:src="this.getComicUrl(this.curComic)">
+	
+	<div id="controls">
+		<button v-show="hasPrevious" v-on:click="this.prevComic()">Previous</button>
+		<button v-show="hasNext" v-on:click="this.nextComic()">Next</button>
+	</div>
+	
+	<div id="description">
+		<br />
+		{{ this.curDescription }}
+		<br />
+	</div>
+</div>
+
+<script type="module">
+  import { createApp } from 'vue'
+  import { ref } from 'vue'
+
+  createApp({
+    data() {
+      return {
+			hasPrevious: false,
+			hasNext: false,
+			curComic: 0,
+			curDescription: "",
+			latest: 0
+      }
+    },
+	
+	async created () {
+		const response = await fetch("./comics/latest.txt");
+		this.latest = parseInt(await response.text());
+		
+		this.checkPageUrl();
+		this.checkRenderButtons();
+		this.getDescription();
+	},
+	
+	methods: {
+		checkPageUrl() {
+			const params = new URLSearchParams(document.location.search);
+			const urlComic = params.get("comic");
+			const urlComicNum = parseInt(urlComic);
+			
+			if (urlComicNum && urlComicNum <= this.latest && urlComicNum > 0) {
+				this.curComic = urlComicNum;
+			} else {
+				if (this.latest === 0) {
+					console.error("Latest comic not set properly.");
+					this.curComic = 1;
+				} else {
+					this.curComic = parseInt(this.latest);
+				}
+			}
+			
+			this.setUrlEnd(this.curComic);
+		},
+		
+		nextComic() {
+			this.curComic++;
+			this.updateComic();	
+		},
+		
+		prevComic() {
+			this.curComic--;
+			this.updateComic();
+		},
+		
+		updateComic() {
+			this.checkRenderButtons();
+			this.getDescription();
+			this.setUrlEnd(this.curComic);
+		},
+		
+		getComicUrl(comicNum) {
+			const comicUrl = "./comics/" + comicNum + ".jpg";
+			return comicUrl;
+		},
+		
+		getDescription() {
+			fetch("./comics/" + this.curComic + ".txt")
+				.then((res) => res.text())
+				.then((text) => {
+					this.curDescription = text;
+				})
+				.catch((e) => console.error(e));
+		},
+		
+		checkRenderButtons() {
+			this.hasPrevious = this.checkFileExists(this.getComicUrl(this.curComic - 1));
+			this.hasNext = this.checkFileExists(this.getComicUrl(this.curComic + 1));
+		},
+		
+		checkFileExists( url ) {
+			//todo? replace with async version
+			var http = new XMLHttpRequest();
+		    http.open('HEAD', url, false);
+	   	    http.send();
+		    return http.status!=404;
+		},
+		
+		setUrlEnd( end ) {
+            const stateObj = { id: "100" };
+			
+			const urlEnd = "/?comic=" + end;
+ 
+            window.history.pushState(stateObj, "", urlEnd);
+        } 
+	},
+	
+	beforeMount() {
+	}
+	
+  }).mount('#app')
+</script>
+
+</body>
+</html>
